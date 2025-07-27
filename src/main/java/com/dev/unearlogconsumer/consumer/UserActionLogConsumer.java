@@ -35,12 +35,11 @@ public class UserActionLogConsumer {
     @PostConstruct
     public void initGroup() {
         try {
-            // Stream 존재 여부 확인
+
             if (!redisTemplate.hasKey(STREAM_KEY)) {
                 redisTemplate.opsForStream().add(STREAM_KEY, Map.of("init", "true"));
             }
 
-            // Consumer Group 존재 여부 확인 후 생성
             if (!isConsumerGroupExists()) {
                 redisTemplate.opsForStream().createGroup(STREAM_KEY, ReadOffset.from("0"), GROUP_NAME);
                 log.info("컨슈머 그룹 생성됨: {}", GROUP_NAME);
@@ -52,6 +51,7 @@ public class UserActionLogConsumer {
             throw e;
         }
     }
+
 
     private boolean isConsumerGroupExists() {
         try {
