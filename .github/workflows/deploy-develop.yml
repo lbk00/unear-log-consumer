@@ -47,5 +47,5 @@ jobs:
             echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
 
             docker pull 1seyoung/log-consumer:develop
-            docker-compose down app
-            docker-compose -f docker-compose.yml up -d app
+            docker compose down app
+            docker compose -f docker-compose.yml up -d app
