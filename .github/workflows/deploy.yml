@@ -47,5 +47,5 @@ jobs:
             echo "REDIS_HOST=redis" >> .env
 
             docker pull 1seyoung/log-consumer:latest
-            docker-compose down
-            docker-compose up -d
+            docker compose down
+            docker compose up -d
