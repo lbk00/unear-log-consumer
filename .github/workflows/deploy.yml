@@ -27,7 +27,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: 1seyoung/unear-app:latest
+          tags: 1seyoung/log-consumer:latest
 
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            cd ~/unear-app
+            cd ~/log-consumer
 
             echo "SPRING_PROFILES_ACTIVE=prod" > .env
             echo "DB_URL=${{ secrets.DB_URL }}" >> .env
@@ -46,6 +46,6 @@ jobs:
             echo "REDIS_PORT=6379" >> .env
             echo "REDIS_HOST=redis" >> .env
 
-            docker pull 1seyoung/unear-app:latest
+            docker pull 1seyoung/log-consumer:latest
             docker-compose down
             docker-compose up -d
