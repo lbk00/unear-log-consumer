@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            cd ~/unear-app
+            cd ~/log-consumer
 
             echo "SPRING_PROFILES_ACTIVE=prod" > .env
             echo "DB_URL=${{ secrets.DB_URL }}" >> .env
@@ -45,8 +45,6 @@ jobs:
 
             echo "REDIS_PORT=6379" >> .env
             echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
-
-            echo "INTERNAL_KEY=${{ secrets.INTERNAL_KEY }}" >> .env
 
             docker pull 1seyoung/unear-app:develop
             docker-compose down app
