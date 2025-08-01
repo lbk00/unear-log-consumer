@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,14 +63,19 @@ public class UserActionLogConsumer {
         }
     }
 
-
-    // 1일 1회 배치 스케쥴링
-//    @Scheduled(cron = "0 0 0 * * *") // 매일 자정 실행
+    // 1일 1회 배치 스케쥴링 -> 벌크 인서트시 데이터 유실 가능성
+//    @Scheduled(fixedDelay = 20 * 60 * 1000) // 20분마다 실행
 //    public void consumeBatch() {
+//        int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
+//        int maxProcess = getMaxProcessByHour(hour);
+//
 //        List<UserActionLog> logsToSave = new ArrayList<>();
+//        List<RecordId> ackIds = new ArrayList<>();
+//        List<RecordId> delIds = new ArrayList<>();
+//        int totalProcessed = 0;
 //
 //        try {
-//            while (true) {
+//            while (totalProcessed < maxProcess) {
 //                List<MapRecord<String, Object, Object>> records =
 //                        redisTemplate.opsForStream().read(Consumer.from(GROUP_NAME, CONSUMER_NAME),
 //                                StreamReadOptions.empty().count(100),
@@ -78,6 +84,8 @@ public class UserActionLogConsumer {
 //                if (records == null || records.isEmpty()) break;
 //
 //                for (MapRecord<String, Object, Object> record : records) {
+//                    if (totalProcessed >= maxProcess) break;
+//
 //                    Map<Object, Object> value = record.getValue();
 //                    try {
 //                        if (!value.containsKey("userId") || !value.containsKey("actionType") || !value.containsKey("timestamp")) {
@@ -88,6 +96,7 @@ public class UserActionLogConsumer {
 //                        UserActionLog logEntity = UserActionLog.builder()
 //                                .userId(Long.parseLong((String) value.get("userId")))
 //                                .actionType((String) value.get("actionType"))
+//                                .screen((String) value.get("screen"))
 //                                .metadata((String) value.get("metadata"))
 //                                .createAt(Instant.ofEpochMilli(Long.parseLong((String) value.get("timestamp")))
 //                                        .atZone(ZoneId.of("Asia/Seoul"))
@@ -95,13 +104,9 @@ public class UserActionLogConsumer {
 //                                .build();
 //
 //                        logsToSave.add(logEntity);
-//
-//                        redisTemplate.opsForStream()
-//                                .acknowledge(STREAM_KEY, GROUP_NAME, record.getId());
-//
-//                        redisTemplate.opsForStream()
-//                                .delete(STREAM_KEY, record.getId());
-//
+//                        ackIds.add(record.getId());
+//                        delIds.add(record.getId());
+//                        totalProcessed++;
 //
 //                    } catch (Exception e) {
 //                        log.warn("레코드 파싱 오류: {}, {}", value, e.getMessage());
@@ -110,14 +115,30 @@ public class UserActionLogConsumer {
 //            }
 //
 //            if (!logsToSave.isEmpty()) {
-//                userActionLogRepository.saveAll(logsToSave); // batch insert
-//                log.info("총 {}건 로그 저장 완료", logsToSave.size());
+//                userActionLogRepository.saveAll(logsToSave);
+//                log.info("총 {}건 로그 저장 완료 ({}시 기준 최대 {})", logsToSave.size(), hour, maxProcess);
+//
+//                // ACK & DELETE는 DB 저장 성공 후 처리
+//                redisTemplate.opsForStream().acknowledge(STREAM_KEY, GROUP_NAME, ackIds.toArray(new RecordId[0]));
+//                redisTemplate.opsForStream().delete(STREAM_KEY, delIds.toArray(new RecordId[0]));
+//            } else {
+//                log.info("처리할 로그 없음 ({}시 기준 최대 {})", hour, maxProcess);
 //            }
 //
 //        } catch (Exception e) {
 //            log.error("배치 로그 소비 중 오류 발생", e);
 //        }
 //    }
+//
+//
+//
+//    private int getMaxProcessByHour(int hour) {
+//        if (hour >= 20 && hour < 22) return 2000;
+//        if (hour >= 12 && hour < 13) return 1000;
+//        return 500;
+//    }
+
+
 
 
     // 로그 수집시 바로 소비 ( 테스트용 )
@@ -144,6 +165,7 @@ public class UserActionLogConsumer {
                     UserActionLog logEntity = UserActionLog.builder()
                             .userId(Long.parseLong((String) value.get("userId")))
                             .actionType((String) value.get("actionType"))
+                            .screen((String) value.get("screen"))
                             .metadata((String) value.get("metadata"))
                             .createAt(Instant.ofEpochMilli(Long.parseLong((String) value.get("timestamp")))
                                     .atZone(ZoneId.of("Asia/Seoul"))

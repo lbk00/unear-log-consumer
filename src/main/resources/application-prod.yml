@@ -1,15 +1,13 @@
-server:
-  port: 8084
-
 spring:
+  forward-headers-strategy: framework
+
   config:
-    import:
-      - optional:application-secret.yml
-  profiles:
-    active: local
+    activate:
+      on-profile: prod
+
   datasource:
     url: ${DB_URL}
-    username: ${DB_USERNAME}
+    username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -19,15 +17,20 @@ spring:
       idle-timeout: 300000
       max-lifetime: 1200000
 
-
   jpa:
     hibernate:
       ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
 
-  redis:
-    host: localhost
-    port: 6379
+
+  data:
+    redis:
+      url: rediss://${REDIS_HOST}:${REDIS_PORT}
+
+logging:
+  level:
+    root: INFO
+    com.unear: INFO
+
+internal:
+  key: ${INTERNAL_KEY}
