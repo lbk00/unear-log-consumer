@@ -2,17 +2,14 @@ package com.dev.unearlogconsumer.consumer;
 
 import com.dev.unearlogconsumer.domain.UserActionLog;
 import com.dev.unearlogconsumer.domain.UserActionLogRepository;
-import io.lettuce.core.RedisCommandExecutionException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -63,134 +60,77 @@ public class UserActionLogConsumer {
         }
     }
 
-    // 1일 1회 배치 스케쥴링 -> 벌크 인서트시 데이터 유실 가능성
-//    @Scheduled(fixedDelay = 20 * 60 * 1000) // 20분마다 실행
-//    public void consumeBatch() {
-//        int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
-//        int maxProcess = getMaxProcessByHour(hour);
-//
-//        List<UserActionLog> logsToSave = new ArrayList<>();
-//        List<RecordId> ackIds = new ArrayList<>();
-//        List<RecordId> delIds = new ArrayList<>();
-//        int totalProcessed = 0;
-//
-//        try {
-//            while (totalProcessed < maxProcess) {
-//                List<MapRecord<String, Object, Object>> records =
-//                        redisTemplate.opsForStream().read(Consumer.from(GROUP_NAME, CONSUMER_NAME),
-//                                StreamReadOptions.empty().count(100),
-//                                StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()));
-//
-//                if (records == null || records.isEmpty()) break;
-//
-//                for (MapRecord<String, Object, Object> record : records) {
-//                    if (totalProcessed >= maxProcess) break;
-//
-//                    Map<Object, Object> value = record.getValue();
-//                    try {
-//                        if (!value.containsKey("userId") || !value.containsKey("actionType") || !value.containsKey("timestamp")) {
-//                            log.warn("필드 누락된 레코드: {}", value);
-//                            continue;
-//                        }
-//
-//                        UserActionLog logEntity = UserActionLog.builder()
-//                                .userId(Long.parseLong((String) value.get("userId")))
-//                                .actionType((String) value.get("actionType"))
-//                                .screen((String) value.get("screen"))
-//                                .metadata((String) value.get("metadata"))
-//                                .createAt(Instant.ofEpochMilli(Long.parseLong((String) value.get("timestamp")))
-//                                        .atZone(ZoneId.of("Asia/Seoul"))
-//                                        .toLocalDateTime())
-//                                .build();
-//
-//                        logsToSave.add(logEntity);
-//                        ackIds.add(record.getId());
-//                        delIds.add(record.getId());
-//                        totalProcessed++;
-//
-//                    } catch (Exception e) {
-//                        log.warn("레코드 파싱 오류: {}, {}", value, e.getMessage());
-//                    }
-//                }
-//            }
-//
-//            if (!logsToSave.isEmpty()) {
-//                userActionLogRepository.saveAll(logsToSave);
-//                log.info("총 {}건 로그 저장 완료 ({}시 기준 최대 {})", logsToSave.size(), hour, maxProcess);
-//
-//                // ACK & DELETE는 DB 저장 성공 후 처리
-//                redisTemplate.opsForStream().acknowledge(STREAM_KEY, GROUP_NAME, ackIds.toArray(new RecordId[0]));
-//                redisTemplate.opsForStream().delete(STREAM_KEY, delIds.toArray(new RecordId[0]));
-//            } else {
-//                log.info("처리할 로그 없음 ({}시 기준 최대 {})", hour, maxProcess);
-//            }
-//
-//        } catch (Exception e) {
-//            log.error("배치 로그 소비 중 오류 발생", e);
-//        }
-//    }
-//
-//
-//
-//    private int getMaxProcessByHour(int hour) {
-//        if (hour >= 20 && hour < 22) return 2000;
-//        if (hour >= 12 && hour < 13) return 1000;
-//        return 500;
-//    }
+    // 20분 스케쥴링
+    @Scheduled(fixedDelay = 20 * 60 * 1000)
+    public void consumeBatch() {
+        int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
+        int maxProcess = getMaxProcessByHour(hour);
 
+        List<UserActionLog> logsToSave = new ArrayList<>();
+        List<RecordId> ackIds = new ArrayList<>();
+        List<RecordId> delIds = new ArrayList<>();
+        int totalProcessed = 0;
 
-
-
-    // 로그 수집시 바로 소비 ( 테스트용 )
-    @Scheduled(fixedDelay = 1000) // 1초마다 pulling
-    public void consume() {
         try {
-            List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
-                    .read(Consumer.from(GROUP_NAME, CONSUMER_NAME),
-                            StreamReadOptions.empty().count(50).block(Duration.ofSeconds(5)),
-                            StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()));
+            while (totalProcessed < maxProcess) {
+                List<MapRecord<String, Object, Object>> records =
+                        redisTemplate.opsForStream().read(Consumer.from(GROUP_NAME, CONSUMER_NAME),
+                                StreamReadOptions.empty().count(100),
+                                StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()));
 
-            List<UserActionLog> batch = new ArrayList<>();
-            List<RecordId> ackIds = new ArrayList<>();
+                if (records == null || records.isEmpty()) break;
 
-            for (MapRecord<String, Object, Object> record : records) {
-                Map<Object, Object> value = record.getValue();
+                for (MapRecord<String, Object, Object> record : records) {
+                    if (totalProcessed >= maxProcess) break;
 
-                try {
-                    if (!value.containsKey("userId") || !value.containsKey("actionType") || !value.containsKey("timestamp")) {
-                        log.warn("필수 필드 누락. 레코드: {}", value);
-                        continue;
+                    Map<Object, Object> value = record.getValue();
+                    try {
+                        if (!value.containsKey("userId") || !value.containsKey("actionType") || !value.containsKey("timestamp")) {
+                            log.warn("필드 누락된 레코드: {}", value);
+                            continue;
+                        }
+
+                        UserActionLog logEntity = UserActionLog.builder()
+                                .userId(Long.parseLong((String) value.get("userId")))
+                                .actionType((String) value.get("actionType"))
+                                .screen((String) value.get("screen"))
+                                .metadata((String) value.get("metadata"))
+                                .createAt(Instant.ofEpochMilli(Long.parseLong((String) value.get("timestamp")))
+                                        .atZone(ZoneId.of("Asia/Seoul"))
+                                        .toLocalDateTime())
+                                .build();
+
+                        logsToSave.add(logEntity);
+                        ackIds.add(record.getId());
+                        delIds.add(record.getId());
+                        totalProcessed++;
+
+                    } catch (Exception e) {
+                        log.warn("레코드 파싱 오류: {}, {}", value, e.getMessage());
                     }
-
-                    UserActionLog logEntity = UserActionLog.builder()
-                            .userId(Long.parseLong((String) value.get("userId")))
-                            .actionType((String) value.get("actionType"))
-                            .screen((String) value.get("screen"))
-                            .metadata((String) value.get("metadata"))
-                            .createAt(Instant.ofEpochMilli(Long.parseLong((String) value.get("timestamp")))
-                                    .atZone(ZoneId.of("Asia/Seoul"))
-                                    .toLocalDateTime())
-                            .build();
-
-                    batch.add(logEntity);
-                    ackIds.add(record.getId());
-
-                } catch (Exception e) {
-                    log.warn("레코드 파싱 실패. 레코드: {}, 오류: {}", value, e.getMessage());
                 }
             }
 
-            if (!batch.isEmpty()) {
-                userActionLogRepository.saveAll(batch);
-                log.info("총 {}개 로그 저장 완료", batch.size());
+            if (!logsToSave.isEmpty()) {
+                userActionLogRepository.saveAll(logsToSave);
+                log.info("총 {}건 로그 저장 완료 ({}시 기준 최대 {})", logsToSave.size(), hour, maxProcess);
 
-                // Redis에서 ack 처리하여 stream에서 제거
                 redisTemplate.opsForStream().acknowledge(STREAM_KEY, GROUP_NAME, ackIds.toArray(new RecordId[0]));
+                redisTemplate.opsForStream().delete(STREAM_KEY, delIds.toArray(new RecordId[0]));
+            } else {
+                log.info("처리할 로그 없음 ({}시 기준 최대 {})", hour, maxProcess);
             }
 
         } catch (Exception e) {
-            log.error("Redis 로그 소비 중 오류 발생", e);
+            log.error("배치 로그 소비 중 오류 발생", e);
         }
+    }
+
+    private int getMaxProcessByHour(int hour) {
+        if (hour >= 0 && hour < 6) return 100;
+        if (hour == 12) return 1500;
+        if (hour >= 20 && hour < 22) return 2000;
+        return 500;
     }
 
 }
