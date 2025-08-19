@@ -1,0 +1,38 @@
+spring:
+  forward-headers-strategy: framework
+
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  jpa:
+    open-in-view: false
+    show-sql: true                 # docker 디버깅용
+    hibernate:
+      ddl-auto: update
+
+  data:
+    redis:
+      host: ${REDIS_HOST}          # docker 내부 네트워크용 (ex. redis)
+      port: ${REDIS_PORT}          # ex. 6379
+      password: ${REDIS_PASSWORD}  # 필요 시만 설정
+
+logging:
+  level:
+    root: INFO
+    com.unear: DEBUG
+
+internal:
+  key: ${INTERNAL_KEY}
