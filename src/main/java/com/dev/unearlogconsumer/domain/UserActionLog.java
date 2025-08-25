@@ -13,17 +13,16 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@SequenceGenerator(
-        name = "USER_ACTION_LOG_SEQ_GENERATOR",
-        sequenceName = "USER_ACTION_LOG_SEQ",
-        initialValue = 1,
-        allocationSize = 500
-)
+//@SequenceGenerator(
+//        name = "USER_ACTION_LOG_SEQ_GENERATOR",
+//        sequenceName = "USER_ACTION_LOG_SEQ",
+//        initialValue = 1,
+//        allocationSize = 500
+//)
 public class UserActionLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE,
-            generator = "USER_ACTION_LOG_SEQ_GENERATOR")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long userActionLogId;
 
     private Long userId;

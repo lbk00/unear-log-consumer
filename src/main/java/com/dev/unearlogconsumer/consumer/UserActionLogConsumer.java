@@ -9,6 +9,7 @@ import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StopWatch;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -63,6 +64,9 @@ public class UserActionLogConsumer {
     // 20분 스케쥴링
     @Scheduled(fixedDelay = 1 * 60 * 1000)
     public void consumeBatch() {
+        StopWatch stopWatch = new StopWatch(); // 스톱워치 생성
+        stopWatch.start(); // 측정 시작
+
         int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
         int maxProcess = getMaxProcessByHour(hour);
 
@@ -123,6 +127,18 @@ public class UserActionLogConsumer {
 
         } catch (Exception e) {
             log.error("배치 로그 소비 중 오류 발생", e);
+        } finally {
+            stopWatch.stop(); // 측정 종료
+            long totalTimeMillis = stopWatch.getTotalTimeMillis();
+
+            if (totalProcessed > 0) {
+                double throughput = (double) totalProcessed / totalTimeMillis * 1000;
+                log.info("===== 배치 작업 성능 측정 =====");
+                log.info("총 처리 건수: {}", totalProcessed);
+                log.info("총 소요 시간: {} ms", totalTimeMillis);
+                log.info("초당 처리량: {:.2f} records/sec", throughput);
+                log.info("============================");
+            }
         }
     }
 
