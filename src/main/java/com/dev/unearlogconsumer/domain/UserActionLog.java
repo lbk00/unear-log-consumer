@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
         name = "USER_ACTION_LOG_SEQ_GENERATOR",
         sequenceName = "USER_ACTION_LOG_SEQ",
         initialValue = 1,
-        allocationSize = 50
+        allocationSize = 100
 )
 public class UserActionLog {
 
