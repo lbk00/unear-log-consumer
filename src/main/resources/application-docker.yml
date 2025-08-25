@@ -22,6 +22,10 @@ spring:
     show-sql: true                 # docker 디버깅용
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate.jdbc.batch_size: 500
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
 
   data:
     redis:

@@ -61,7 +61,7 @@ public class UserActionLogConsumer {
     }
 
     // 20분 스케쥴링
-    @Scheduled(fixedDelay = 20 * 60 * 1000)
+    @Scheduled(fixedDelay = 1 * 60 * 1000)
     public void consumeBatch() {
         int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
         int maxProcess = getMaxProcessByHour(hour);
