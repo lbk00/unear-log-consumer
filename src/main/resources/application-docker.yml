@@ -23,7 +23,7 @@ spring:
     hibernate:
       ddl-auto: update
     properties:
-      hibernate.jdbc.batch_size: 500
+      hibernate.jdbc.batch_size: 50
       hibernate.order_inserts: true
       hibernate.order_updates: true
 
