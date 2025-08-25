@@ -62,9 +62,9 @@ public class UserActionLogConsumer {
     }
 
     // 20분 스케쥴링
-    @Scheduled(fixedDelay = 3 * 60 * 1000)
+    @Scheduled(fixedDelay = 20 * 60 * 1000)
     public void consumeBatch() {
-        StopWatch stopWatch = new StopWatch(); // 스톱워치 생성
+        StopWatch stopWatch = new StopWatch();
         stopWatch.start(); // 측정 시작
 
         int hour = LocalDateTime.now(ZoneId.of("Asia/Seoul")).getHour();
